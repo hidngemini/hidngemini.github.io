@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>CS512 HW4 - Orrery Model</title>
+  <title>CS512 HW3 - Solar System</title>
   <style>
     body {
       background: #111;
@@ -26,13 +26,12 @@
 </head>
 
 <body>
-  <h2>Orrery Model</h2>
+  <h2>Solar System Generator</h2>
   <p>Edit vertex and fragment shaders on the left to get the result instantly.<br>
-  Use mouse to drag and rotate the world.<br>
-  Use arrow keys and w, s keys to move the camera.<br>
-  By default, the solar system will spin on it's own<br>
-  (The orbits are roughly accurate relative to each other!)<br>
-  Untick the "Animate?" checkboxes to manually set a rotation</p>
+  Use mouse to drag and rotate the world. <br>
+Use arrow keys and w, s keys to move the camera.<br>
+Edit the solar system with the controls below.<br>
+Whichever body is selected will pulse blue.</p>
 
   <div style="display: flex; gap: 10px; align-items: flex-start;">
     <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -47,40 +46,58 @@
     </div>
     <div style="display: flex; flex-direction: column; gap: 10px;">
       <div>
-        <canvas id="glcanvas" width="600" height="500"></canvas>
+        <canvas id="glcanvas" width="400" height="400"></canvas>
       </div>
       <div>
+        <select id="shapeSelect">
+          <option value="" disabled selected>-- Select an option --</option>
+          <option value="sphere">Sphere</option>
+          <option value="torus">Torus</option>
+          <option value="cone">Cone</option>
+          <option value="ringedPlanet">Ringed Planet</option>
+          <option value="cube">Cube</option>
+        </select>
+        <button id="addButton">Add a New Body</button>
       </div>
       <div class="sliders">
         <div>
-          <label>Earth Orbit Rotation</label>
-          <input type="range" min="0" max="6.28" value="0" step="0.01" id="sunRotation">
-          <label>Animate?</label>
-          <input type="checkbox" id="sunAnim" checked="true">
+          <label>Select Shape</label>
+          <input type="range" min="0" max="3" value="1" id="objectId">
         </div>
         <div>
-          <label>Moon Orbit Rotation</label>
-          <input type="range" min="0" max="6.28" value="0" step="0.01" id="earthRotation">
-          <label>Animate?</label>
-          <input type="checkbox" id="earthAnim" checked="true">
+          <label>Size</label>
+          <input type="range" min="0.01" max="5" value="1" step="0.01" id="objectSize">
         </div>
         <div>
-          <label>Satelite Orbit Rotation</label>
-          <input type="range" min="0" max="6.28" value="0" step="0.01" id="moonRotation">
-          <label>Animate?</label>
-          <input type="checkbox" id="moonAnim" checked="true">
+          <label>Distance</label>
+          <input type="range" min="0" max="30" value="5" step="0.1" id="objectDist">
         </div>
         <div>
-          <label>Mars Orbit Rotation</label>
-          <input type="range" min="0" max="6.28" value="0" step="0.01" id="marsRotation">
-          <label>Animate?</label>
-          <input type="checkbox" id="marsAnim" checked="true">
+          <label>Orbit Period</label>
+          <input type="range" min="-40" max="40" value="10" id="period">
+        </div>
+        <div>
+          <label for="colourSelect">Colour Scheme:</label>
+          <select id="colourSelect">
+            <option value="" disabled selected>-- Select an option --</option>
+            <option value="0">Sun</option>
+            <option value="1">White</option>
+            <option value="2">Chaos</option>
+            <option value="3">Earth</option>
+            <option value="4">Mars</option>
+            <option value="5">Moon</option>
+            <option value="6">Neptune</option>
+            <option value="7">Saturn</option>
+            <option value="8">Oracle</option>
+            <option value="10">White Opal</option>
+          </select>
+
+          <button id="applyButton">Apply</button>
+        </div>
+        <div>
+          <button id="reset">Remove All Planets</button>
         </div>
       </div>
-    </div>
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-      <h1>Inspiration:</h1>
-      <img src="https://www.orreries.co.uk/wp-content/uploads/2022/01/the-solar-system-model-116.jpg" width="600px">
     </div>
   </div>
 
@@ -90,6 +107,7 @@ in vec3 aPosition;
 in vec3 aColor;
 
 uniform float uTime; //time in sec
+uniform bool isSelected;
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelTransformationMatrix;
@@ -97,9 +115,27 @@ uniform mat4 uModelTransformationMatrix;
 out vec3 vColor;
 
 void main() {
+  vec3 intensityCoeffs = vec3(0.2126, 0.7152, 0.0722); // intensity coefficients I found online
+
   gl_Position = uProjectionMatrix * uModelViewMatrix * uModelTransformationMatrix * vec4(aPosition,1.0);
 
-  vColor = aColor;
+  // if the object is selected, blink it blue
+  if (isSelected) {
+    // compute intensity of the original colour
+    float intensity = dot(aColor, intensityCoeffs);
+
+    // make a blue tinted version of the original colour using the intensity
+    vec3 blueVersion = vec3(0.1*intensity,0.7*intensity,intensity);
+
+    // compute sin^2 and cos^2 of uTime (sin^2+cos^2=1 so we can weigh the blue tinted version of the colours and the original colours equally)
+    float sinSq = sin(uTime)*sin(uTime);
+    float cosSq = cos(uTime)*cos(uTime);
+
+    // interpolated colour between original and blue
+    vColor = min((0.4+cosSq),1.) * aColor + max((sinSq-0.4),0.) * blueVersion;
+  } else {
+    vColor = aColor;
+  }
 }
 </script>
   <!-- Fragment Shader -->
@@ -126,36 +162,18 @@ void main() {
       }
     }
 
-    class AttributeBody extends Body {
-      constructor(vs, is, cs, size, position) {
+    class Planet extends Body {
+      constructor(vs, is, cs, dist, size, orbitPeriod) {
         super(vs, is, cs);
-        this.position = position;
+        this.distance = dist;
         this.size = size;
-        this.rotate = mat4Identity();
+        this.orbitPeriod = orbitPeriod;
+        this.angleOffset = 0;
       }
       get transform() {
-        let scale = new Float32Array([this.size[0], 0, 0, 0, 0, this.size[1], 0, 0, 0, 0, this.size[2], 0, 0, 0, 0, 1]);
-        let translate = mat4Translate(mat4Identity(), this.position);
-        let mid = multiplyMat4(this.rotate,scale);
-        return multiplyMat4(translate, mid);
-      }
-    }
-
-    class ComplexObject {
-      constructor() {
-        this.bodies = [];
-        this.modelSpaceTransform = mat4Identity();
-      }
-      push(obj) {
-        this.bodies.push(obj);
-      }
-    }
-
-    class HeirarchicalModelNode {
-      constructor(complexObj, transform) {
-        this.body = complexObj;
-        this.transform = transform;
-        this.children = [];
+        let scale = new Float32Array([this.size, 0, 0, 0, 0, this.size, 0, 0, 0, 0, this.size, 0, 0, 0, 0, 1]);
+        let translate = mat4Translate(mat4Identity(), [this.distance, 0, 0]);
+        return multiplyMat4(translate, scale);
       }
     }
 
@@ -195,265 +213,75 @@ void main() {
     let program, posLoc, colorLoc, timeLoc, uMVM, uPM, uMTM;
     let vbo, nbo, ibo;
 
-    let anim = [true,true,true,true];
+    let bodies = [];
 
-    let heirarchicalObjects = [];
+    // this is a janky implementation, but it was a last minute addition and I didn't want to refactor everything.
+    let dependentBodies = []; // for ringed planets and such
 
     let u = 16;
     let v = 8;
 
-    let vs, cs, is, aBody;
+    let selected = 0;
 
-    /*
-    #################################
-    #                               #
-    #     Setting up the object     #
-    #                               #
-    #################################
-    */
+    addShape(0, [u, v, 1], 0, 1.5, 20);
+    bodies[0].colours = getColoursFromScheme(bodies[0].vertices.length, "0"); // set middle to Sun Colours
+    addShape(0, [u, v, 1], 3, 0.6, 10);
+    bodies[1].colours = getColoursFromScheme(bodies[0].vertices.length, "3"); // set second to Earth Colours
+    addShape(0, [u, v, 1], 5, 0.5, 15);
+    bodies[2].colours = getColoursFromScheme(bodies[0].vertices.length, "4"); // set third to Mars Colours
+    addShape(3, [u, v, 1], 8, 0.7, 12);
+    bodies[3].colours = getColoursFromScheme(bodies[0].vertices.length, "7"); // set fourth to Saturn Colours
 
-    // setup base object
-    let cObj = new ComplexObject();
-    
-    // base torus
-    vs = torusVertices(u, v, 1, 2);
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = indices(u,v);
-    aBody = new AttributeBody(vs, is, cs, [0.8,0.8,0.1], [0,1,0]);
-    aBody.rotate = mat4RotateX(mat4Identity(), Math.PI/2);
-    cObj.push(aBody);
+    function addShape(shapeId, args, dist, size, op) { 
+      let vs, cs, is;
+      switch (shapeId) {
+        // UV sphere
+        case 0: {
+          vs = UVSphereVertices(args[0], args[1], args[2]);
+          break;
+        }
+        // torus
+        case 1: {
+          vs = torusVertices(args[0], args[1], args[2], args[3]);
+          break;
+        }
+        // cone
+        case 2: {
+          vs = coneVertices(args[0], args[1], args[2], args[3]);
+          break;
+        }
+        // ringed planet
+        case 3: {
+          vs = torusVertices(u, v, 1.7, 0.3);
+          cs = getRandomColours(vs.length, 0.55, 0.55, 0.55, 0.15, 0.15, 0.15);
+          is = indices(u, v);
 
-    // base legs
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
+          let tuple = [bodies.length, new Planet(vs, is, cs, -1, size, -1)];
+          dependentBodies.push(tuple);
+          
+          vs = UVSphereVertices(args[0], args[1], args[2]);
+          break;
+        }
+        // cube
+        case 4: {
+          vs = cubeVertices;
+          break;
+        }
+      }
+      // get a random colour scheme and get that many colours
+      let sel = String(Math.floor(Math.random() * 10));
+      cs = getColoursFromScheme(vs.length, sel);
 
-    // leg 1
-    aBody = new AttributeBody(vs, is, cs, [0.3,0.1,2], [0,0,-1]);
-    aBody.rotate = mat4RotateX(mat4Identity(), -Math.PI/3);
-    cObj.push(aBody);
-
-    // leg 2
-    aBody = new AttributeBody(vs, is, cs, [0.3,0.1,2], [0,0,1]);
-    aBody.rotate = mat4RotateX(mat4Identity(), Math.PI/3);
-    cObj.push(aBody);
-
-    // leg 3
-    aBody = new AttributeBody(vs, is, cs, [0.3,0.1,2], [1,0,0]);
-    aBody.rotate = mat4RotateX(mat4RotateY(mat4Identity(), Math.PI/2), Math.PI/3);
-    cObj.push(aBody);
-
-    // leg 4
-    aBody = new AttributeBody(vs, is, cs, [0.3,0.1,2], [-1,0,0]);
-    aBody.rotate = mat4RotateX(mat4RotateY(mat4Identity(), 3*Math.PI/2), Math.PI/3);
-    cObj.push(aBody);
-
-    // setup base plate node (this will be the root of our tree)
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,-2.5,0]);
-    let baseNode = new HeirarchicalModelNode(cObj, mat4Identity());
-
-    // setup sun object
-    cObj = new ComplexObject(); // sun object container
-
-    // sun sphere
-    vs = UVSphereVertices(u, v, 1);
-    cs = getColoursFromScheme(vs.length, "sun");
-    is = indices(u,v);
-    aBody = new AttributeBody(vs, is, cs, [1.2,1.2,1.2], [0,0,0]);
-    cObj.push(aBody);
-
-    // sun stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.1,0.8,0.1], [0,-2,0]);
-    cObj.push(aBody);
-
-    // setup sun node
-    let sunNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,4.5,0]);
-    baseNode.children.push(sunNode);
-
-    // setup sun to earth stick object
-    cObj = new ComplexObject();
-
-    // sun to earth stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [3,0.1,0.1], [2.9,-2.1,0]);
-    cObj.push(aBody);
-
-    // setup sun-earth stick node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,0,0]);
-    let sun2earthNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    sunNode.children.push(sun2earthNode);
-
-    // setup earth object
-    cObj = new ComplexObject();
-  
-    // earth sphere
-    vs = UVSphereVertices(u, v, 1);
-    cs = getColoursFromScheme(vs.length, "earth");
-    is = indices(u,v);
-    aBody = new AttributeBody(vs, is, cs, [0.6,0.6,0.6], [0,0,0]);
-    cObj.push(aBody);
-
-    // earth stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.1,0.8,0.1], [0,-1.3,0]);
-    cObj.push(aBody);
-
-    // setup earth node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [5.8,0,0]);
-    let earthNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    sun2earthNode.children.push(earthNode);
-
-    // setup earth to moon stick object
-    cObj = new ComplexObject();
-
-    // earth to moon stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [1.2,0.1,0.1], [-1.2,-1,0]);
-    cObj.push(aBody);
-
-    // setup earth-moon stick node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [5.8,0,0]);
-    let earth2moonNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    sun2earthNode.children.push(earth2moonNode);
-
-    // setup moon object
-    cObj = new ComplexObject();
-
-    // moon sphere
-    vs = UVSphereVertices(u, v, 1);
-    cs = getColoursFromScheme(vs.length, "moon");
-    is = indices(u,v);
-    aBody = new AttributeBody(vs, is, cs, [0.3,0.3,0.3], [0,0,0]);
-    cObj.push(aBody);
-
-    // moon stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.1,0.4,0.1], [0,-0.7,0]);
-    cObj.push(aBody);
-
-    // setup moon node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [-2.3,0,0]);
-    let moonNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    earth2moonNode.children.push(moonNode);
-
-    // setup earth to moon stick object
-    cObj = new ComplexObject();
-
-    // moon to satelite stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.5,0.1,0.1], [0.4,-0.5,0]);
-    cObj.push(aBody);
-
-    // setup moon-satelite stick node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [-2.3,0,0]);
-    let moon2sateliteNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    earth2moonNode.children.push(moon2sateliteNode);
-
-    // setup satelite object
-    cObj = new ComplexObject();
-
-    // satelite cone body
-    vs = coneVertices(u, v, 1, 1);
-    cs = getColoursFromScheme(vs.length, "satelite");
-    is = indices(u,v);
-    aBody = new AttributeBody(vs, is, cs, [0.15,0.15,-0.6], [0,0,0.3]);
-    cObj.push(aBody);
-
-    // satelite rectangle solar panels
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "solar");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.3,0.02,0.1], [0,0,0.1]);
-    cObj.push(aBody);
-
-    // satelite stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.1,0.3,0.1], [0,-0.3,0]);
-    cObj.push(aBody);
-
-    // setup satelite node
-    let sateliteNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    moon2sateliteNode.children.push(sateliteNode);
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0.9,0,0]);
-
-    // setup sun to earth stick object
-    cObj = new ComplexObject();
-
-    // sun to mars stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [5,0.1,0.1], [4.9,-2.8,0]);
-    cObj.push(aBody);
-
-    // setup sun-mars stick node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,0,0]);
-    let sun2marsNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    sunNode.children.push(sun2marsNode);
-
-    // setup mars object
-    cObj = new ComplexObject();
-  
-    // mars sphere
-    vs = UVSphereVertices(u, v, 1);
-    cs = getColoursFromScheme(vs.length, "mars");
-    is = indices(u,v);
-    aBody = new AttributeBody(vs, is, cs, [0.5,0.5,0.5], [0,0,0]);
-    cObj.push(aBody);
-
-    // mars stick
-    vs = cubeVertices;
-    cs = getColoursFromScheme(vs.length, "gold");
-    is = cubeIndices;
-    aBody = new AttributeBody(vs, is, cs, [0.1,1.1,0.1], [0,-1.6,0]);
-    cObj.push(aBody);
-
-    // setup mars node
-    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [9.8,0,0]);
-    let marsNode = new HeirarchicalModelNode(cObj, mat4Identity());
-    sun2marsNode.children.push(marsNode);
-
-    heirarchicalObjects.push(baseNode);
-
-    /*
-    ##################################
-    #                                #
-    #           Functions            #
-    #                                #
-    ##################################
-    */
-
-    function DFSTransformGen(tree, transform) { 
-      let modelTransformPairs = [];
-      let gst = tree.body.globalSpaceTransform; // global space transform
-      let brt = tree.transform // body rotation transform
-      let localTransform = multiplyMat4(gst, brt);
-      transform = multiplyMat4(transform, localTransform);
-      tree.children.forEach(child => {
-        let subArr = DFSTransformGen( child, transform);
-        modelTransformPairs = modelTransformPairs.concat(subArr);
-      });
-
-      modelTransformPairs.push(([tree.body, transform]));
-      return modelTransformPairs;
+      if (shapeId == 4) {
+        is = cubeIndices
+      } else {
+        is = indices(args[0], args[1]);
+      }
+      
+      bodies.push(new Planet(vs, is, cs, dist, size, op));
     }
 
+    // Buffers
     function initBuffers(vs, cs, is) {
       vbo = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
@@ -471,6 +299,7 @@ void main() {
       try {
         program = createProgram(gl, vertEditor.value, fragEditor.value);
         gl.useProgram(program);
+        selectionLoc = gl.getUniformLocation(program, "isSelected");
         posLoc = gl.getAttribLocation(program, "aPosition");
         colorLoc = gl.getAttribLocation(program, "aColor");
         timeLoc = gl.getUniformLocation(program, "uTime");
@@ -512,72 +341,124 @@ void main() {
       }
     });
 
-    // Buttons and Sliders and Such Setup
-    const sunSlider = document.getElementById('sunRotation');
-    const earthSlider = document.getElementById('earthRotation');
-    const moonSlider = document.getElementById('moonRotation');
-    const marsSlider = document.getElementById('marsRotation');
+    // Button setup
+    const colourSelectElement = document.getElementById('colourSelect');
+    const applyButton = document.getElementById('applyButton');
+    const shapeSelectElement = document.getElementById('shapeSelect');
 
-    const sunAnim = document.getElementById('sunAnim');
-    const earthAnim = document.getElementById('earthAnim');
-    const moonAnim = document.getElementById('moonAnim');
-    const marsAnim = document.getElementById('marsAnim');
+    const addButton = document.getElementById('addButton');
+    const resetButton = document.getElementById("reset");
+    
+    const objectSlider = document.getElementById('objectId');
+    const sizeSlider = document.getElementById('objectSize');
+    const distSlider = document.getElementById('objectDist');
+    const periodSlider = document.getElementById('period');
+
+    function getColoursFromScheme(numVertices, sel) {
+      let colours;
+      switch (sel) {
+        case "0": colours = getRandomColours(numVertices, 1, 0.15, 0.15, 0, 0.5, 0); break;
+        case "1": colours = getRandomGreyscale(numVertices, 1, 0); break;
+        case "2": colours = getRandomColours(numVertices, 0, 0, 0, 1, 1, 1); break;
+        case "3": colours = getRandomColours(numVertices, 0.33, 0, 0, 0, 1, 1); break;
+        case "4": colours = getRandomColours(numVertices, 0.4, 0.2, 0.2, 0.7, 0.1, 0); break;
+        case "5": colours = getRandomGreyscale(numVertices, 0.4, 0.4); break;
+        case "6": colours = getRandomColours(numVertices, 0.3, 0.2, 0.9, 0.1, 0.1, 0.1); break;
+        case "7": colours = getRandomColours(numVertices, 0.8, 0.65, 0.5, 0.2, 0.2, 0); break;
+        case "8": colours = getRandomColours(numVertices, 0.5, 0, 1, 0.5, 0, 0); break;
+        case "9": colours = getRandomColours(numVertices, 0, 0, 0, 0.2, 0.2, 0.2); break;
+        case "10": colours = getRandomColours(numVertices, 0.8, 0.8, 0.8, 0.2, 0.2, 0.2); break;
+      }
+      return colours;
+    }
+
+    // Apply changes
+    applyButton.addEventListener('click', () => {
+      const selectedValue = colourSelectElement.value;
+      
+      if (selectedValue) {
+
+        const i = Number(objectSlider.value);
+        let numVertices = bodies[i].vertices.length;
+        bodies[i].colours = getColoursFromScheme(numVertices, selectedValue);
+      }
+    });
+
+    // Add button functionality
+    addButton.addEventListener('click', () => {
+      const selectedShape = shapeSelectElement.value;
+
+      objectSlider.max = String(Number(objectSlider.max) + 1);
+      switch (selectedShape) {
+        case "sphere": {
+          addShape(0, [u, v, 1], 1+5*Math.random(), 0.3+Math.random(), 2+5*Math.random());
+          break;
+        }
+        case "torus": {
+          addShape(1, [u, v, 1, 0.2], 1+7*Math.random(), 0.3+Math.random(), 2+5*Math.random());
+          break;
+        }
+        case "cone": {
+          addShape(2, [u, v, 1, -1], 1+7*Math.random(), 0.3+Math.random(), 2+5*Math.random());
+          break;
+        }
+        case "ringedPlanet": {
+          addShape(3, [u, v, 1], 1+5*Math.random(), 0.3+Math.random(), 2+5*Math.random());
+          break;
+        }
+        case "cube": {
+          addShape(4, [u, v, 1], 1+5*Math.random(), 0.3+Math.random(), 2+5*Math.random());
+          break;
+        }
+      }
+    });
 
     // add slider functionality
-    sunSlider.addEventListener("change", function() {
-      let sunRotation = Number(sunSlider.value);
-
-      sun2earthNode.transform = mat4RotateY(mat4Identity(), sunRotation);
+    objectSlider.addEventListener("change", function() {
+      selected = Number(objectSlider.value)
     });
 
-    earthSlider.addEventListener("change", function() {
-      let earthRotation = Number(earthSlider.value);
+    sizeSlider.addEventListener("change", function() {
+      const objectId = Number(objectSlider.value);
 
-      earth2moonNode.transform = mat4RotateY(mat4Identity(), earthRotation);
+      const size = sizeSlider.value;
+      bodies[objectId].size = size;
     });
 
-    moonSlider.addEventListener("change", function() {
-      let moonRotation = Number(moonSlider.value);
+    distSlider.addEventListener("change", function() {
+      const objectId = Number(objectSlider.value);
 
-      moon2sateliteNode.transform = mat4RotateY(mat4Identity(), moonRotation);
+      const dist = distSlider.value;
+      bodies[objectId].distance = dist;
     });
 
-    marsSlider.addEventListener("change", function() {
-      let marsRotation = Number(marsSlider.value);
+    periodSlider.addEventListener("change", function() {
+      const objectId = Number(objectSlider.value);
+      const period = periodSlider.value;
 
-      sun2marsNode.transform = mat4RotateY(mat4Identity(), marsRotation);
-    });
-
-    sunAnim.addEventListener("change", function() {
-      anim[0] = sunAnim.checked;
-      if (!anim[0]) {
-        let sunRotation = Number(sunSlider.value);
-        sun2earthNode.transform = mat4RotateY(mat4Identity(), sunRotation);
+      if (bodies[objectId].orbitPeriod != 0) {
+        bodies[objectId].angleOffset += (2*Math.PI*(Date.now() - startTime)/1000) / bodies[objectId].orbitPeriod;
       }
+      if (period != 0) {
+        bodies[objectId].angleOffset -= (2*Math.PI*(Date.now() - startTime)/1000) / period;
+      }
+      if (bodies[objectId].angleOffset > 2*Math.PI || bodies[objectId].angleOffset < 2*Math.PI) {
+        bodies[objectId].angleOffset %= 2*Math.PI;
+      }
+
+      bodies[objectId].orbitPeriod = period;
+
+      console.log(bodies[objectId].angleOffset);
     });
 
-    earthAnim.addEventListener("change", function() {
-      anim[1] = earthAnim.checked;
-      if (!anim[1]) {
-        let earthRotation = Number(earthSlider.value);
-        earth2moonNode.transform = mat4RotateY(mat4Identity(), earthRotation);
+    // clear button setup
+    resetButton.addEventListener('click', () => {
+      while (bodies.length > 1) {
+        bodies.pop();
       }
-    });
-
-    moonAnim.addEventListener("change", function() {
-      anim[2] = moonAnim.checked;
-      if (!anim[2]) {
-        let moonRotation = Number(moonSlider.value);
-        moon2sateliteNode.transform = mat4RotateY(mat4Identity(), moonRotation);
-      }
-    });
-
-    marsAnim.addEventListener("change", function() {
-      anim[3] = marsAnim.checked;
-      if (!anim[3]) {
-        let marsRotation = Number(marsSlider.value);
-        sun2marsNode.transform = mat4RotateY(mat4Identity(), marsRotation);
-      }
+      dependentBodies = [];
+      objectSlider.max = 0;
+      objectSlider.value = 0;
     });
 
     // Projection setup
@@ -588,11 +469,24 @@ void main() {
     // Perspective and Orthographic projection
     let projPerspective = perspective(fov, aspect, zNear, zFar);
 
+    let projOrtho = matMul(
+    box2Cube(-orthoSize * aspect, orthoSize * aspect, -orthoSize, orthoSize, zNear, zFar),
+    flipZ() 
+    );
     let proj = projPerspective;
 
-    function subRender(rotation, deltaTime, vs, cs, is, transform) {
+    function subRender(rotation, deltaTime, vs, cs, is, transform, period, angleOffset) {
       // init model transformation matrix as identity matrix
       let modelTransformationMatrix = transform;
+
+      // orbit rotation
+      let orbitRotation;
+      if (period != 0) {
+        orbitRotation = mat4RotateY(mat4Identity(), ((2*Math.PI*deltaTime/1000)/period)+angleOffset);
+      } else {
+        orbitRotation = mat4RotateY(mat4Identity(), angleOffset);
+      }
+      modelTransformationMatrix = multiplyMat4(orbitRotation, modelTransformationMatrix);
 
       // object rotation based on camera
       modelTransformationMatrix = multiplyMat4(rotation, modelTransformationMatrix);
@@ -613,7 +507,7 @@ void main() {
       gl.drawElements(gl.TRIANGLES, is.length, gl.UNSIGNED_SHORT, 0);
     }
 
-    function renderScene() {
+    function render() {
       gl.enable(gl.DEPTH_TEST);
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -639,59 +533,47 @@ void main() {
       gl.uniformMatrix4fv(uPM, false, proj);
       gl.uniformMatrix4fv(uMVM, false, modelViewMatrix);
 
-      for (var i = 0; i < heirarchicalObjects.length; i++) {
-        let hObj = heirarchicalObjects[i];
-        renderHeirarchicalObject(hObj, deltaTime, rotation);
-      }
-    }
 
-    function renderHeirarchicalObject(hObj, deltaTime, camRotation) {
-      // let order = DFS(hObj);
-      let modelTransformPairs = DFSTransformGen(hObj, mat4Identity());
-      for (var i = 0; i < modelTransformPairs.length; i++) {
-        let cObj = modelTransformPairs[i][0];
-        let transform = modelTransformPairs[i][1];
-        renderComplexObject(cObj, deltaTime, camRotation, transform);
-      }
-    }
+      for (var i = 0; i < bodies.length; i++) {
+        gl.uniform1i(selectionLoc, i == selected);
+        let vs = bodies[i].vertices;
+        let cs = bodies[i].colours;
+        let is = bodies[i].indices;
+        let transform = bodies[i].transform;
+        let period = bodies[i].orbitPeriod;
+        let angleOffset = bodies[i].angleOffset;
 
-    function renderComplexObject(cObj, deltaTime, camRotation, transform) {
-      for (var i = 0; i < cObj.bodies.length; i++) {
-        let aBody = cObj.bodies[i];
-        renderAttributeBody(aBody, deltaTime, camRotation, transform);
-      }
-    }
+        // oscillate the sun's size
+        if (i==0) {
+          let scale = new Float32Array([1.1+0.1*Math.cos(deltaTime/1000), 0, 0, 0, 0, 1.1+0.1*Math.cos(deltaTime/1000), 0, 0, 0, 0, 1.1+0.1*Math.cos(deltaTime/1000), 0, 0, 0, 0, 1]);
+          transform = multiplyMat4(transform, scale);
+        }
 
-    function renderAttributeBody(aBody, deltaTime, camRotation, transform) {
-      let vs = aBody.vertices;
-      let cs = aBody.colours;
-      let is = aBody.indices;
-
-      transform = multiplyMat4(transform, aBody.transform);
-
-      subRender(camRotation, deltaTime, vs, cs, is, transform);
-    }
-
-    function updateAnim() {
-      let deltaTime = Date.now() - startTime;
-      if (anim[0]) {
-        sun2earthNode.transform = mat4RotateY(mat4Identity(), deltaTime/10/365);
+        subRender(rotation, deltaTime, vs, cs, is, transform, period, angleOffset);
       }
-      if (anim[1]) {
-        earth2moonNode.transform = mat4RotateY(mat4Identity(), deltaTime/10/27.3);
-      }
-      if (anim[2]) {
-        moon2sateliteNode.transform = mat4RotateY(mat4Identity(), deltaTime/200);
-      }
-      if (anim[3]) {
-        sun2marsNode.transform = mat4RotateY(mat4Identity(), deltaTime/10/687);
+
+      for (var i = 0; i < dependentBodies.length; i++) {
+        gl.uniform1i(selectionLoc, dependentBodies[i][0] == selected);
+        let vs = dependentBodies[i][1].vertices;
+        let cs = dependentBodies[i][1].colours;
+        let is = dependentBodies[i][1].indices;
+        let transform = bodies[dependentBodies[i][0]].transform;
+
+        // set up the ring
+        transform = mat4RotateX(transform, 1.5);
+        let scale = new Float32Array([1+0.15*Math.sin(deltaTime/1000), 0, 0, 0, 0, 1+0.15*Math.cos(deltaTime/1000), 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 1]);
+        transform = multiplyMat4(transform, scale);
+        
+        let period = bodies[dependentBodies[i][0]].orbitPeriod;
+        let angleOffset = bodies[dependentBodies[i][0]].angleOffset;
+        
+        subRender(rotation, deltaTime, vs, cs, is, transform, period, angleOffset);
       }
     }
 
     // Initialize when page loads
     window.onload = function () {
-      setInterval(updateAnim, 10);
-      setInterval(renderScene, 10);
+      setInterval(render, 10);
     }
 
   </script>

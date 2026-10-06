@@ -105,6 +105,20 @@ function indices(uSteps, vSteps) {
   return new Uint16Array(indices);
 }
 
+function getColoursFromScheme(numVertices, sel) {
+  let colours;
+  switch (sel) {
+    case "sun": colours = getRandomColours(numVertices, 1, 0.15, 0.15, 0, 0.5, 0); break;
+    case "earth": colours = getRandomColours(numVertices, 0.33, 0, 0, 0, 1, 1); break;
+    case "mars": colours = getRandomColours(numVertices, 0.4, 0.2, 0.2, 0.7, 0.1, 0); break;
+    case "moon": colours = getRandomGreyscale(numVertices, 0.4, 0.4); break;
+    case "solar": colours = getRandomColours(numVertices, 0.3, 0.2, 0.9, 0.1, 0.1, 0.1); break;
+    case "gold": colours = getRandomColours(numVertices, 0.7, 0.55, 0.45, 0.2, 0.2, 0); break;
+    case "satelite": colours = getRandomGreyscale(numVertices, 0.6, 0.6); break;
+  }
+  return colours;
+}
+
 function getRandomColours(vertexCount, rBase, gBase, bBase, rVar, gVar, bVar) {
   let colours = [];
   for (let i = 0; i <= vertexCount; i++) {
