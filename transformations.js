@@ -145,6 +145,15 @@ function mat4RotateY(matrix, angle) {
     return result;
 }
 
+function transformPoint(m, p) {
+    const x = p[0], y = p[1], z = p[2];
+    return [
+        m[0] * x + m[4] * y + m[8] * z + m[12],
+        m[1] * x + m[5] * y + m[9] * z + m[13],
+        m[2] * x + m[6] * y + m[10] * z + m[14]
+    ];
+}
+
 
 // [optional] Helper function converting math format row-major matrices into a flat column-major array.
 // function mat4FromRows(m00, m01, m02, m03,

@@ -1,137 +1,157 @@
-// cube
-const cubeVertices = new Float32Array([
-  -1, -1, -1,  // 0
-   1, -1, -1,  // 1
-   1,  1, -1,  // 2
-  -1,  1, -1,  // 3
-  -1, -1,  1,  // 4
-   1, -1,  1,  // 5
-   1,  1,  1,  // 6
-  -1,  1,  1   // 7
-]);
+function createCube() {
+  const vertices = new Float32Array([
+    -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1,   // front
+     1, -1, -1,  -1, -1, -1,  -1,  1, -1,   1,  1, -1,   // back
+    -1,  1,  1,   1,  1,  1,   1,  1, -1,  -1,  1, -1,   // top
+    -1, -1, -1,   1, -1, -1,   1, -1,  1,  -1, -1,  1,   // bottom
+     1, -1,  1,   1, -1, -1,   1,  1, -1,   1,  1,  1,   // right
+    -1, -1, -1,  -1, -1,  1,  -1,  1,  1,  -1,  1, -1    // left
+  ]);
+  const faceNormals = [[0, 0, 1], [0, 0, -1], [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0]];
+  const normals = new Float32Array(faceNormals.flatMap(n => [...n, ...n, ...n, ...n]));
 
-const cubeColors = new Float32Array([
-  1,0,0,  // 0
-  0,1,0,  // 1
-  0,0,1,  // 2
-  1,1,0,  // 3
-  1,0,1,  // 4
-  0,1,1,  // 5
-  1,1,0,  // 6
-  1,0,1,  // 7
-]);
+  const indices = new Uint16Array([
+     0,  1,  2,   0,  2,  3,   // front
+     4,  5,  6,   4,  6,  7,   // back
+     8,  9, 10,   8, 10, 11,   // top
+    12, 13, 14,  12, 14, 15,   // bottom
+    16, 17, 18,  16, 18, 19,   // right
+    20, 21, 22,  20, 22, 23    // left
+  ]);
+  return { vertices, normals, indices };
+}
 
+function createUVSphere(uSteps, vSteps, r) {
+  const vertices = [];
+  const normals = [];
+  const indices = [];
 
-const cubeIndices = new Uint16Array([
-  // Front
-  4, 5, 6,   4, 6, 7,
-  // Back
-  1, 0, 3,   1, 3, 2,
-  // Top
-  3, 7, 6,   3, 6, 2,
-  // Bottom
-  0, 1, 5,   0, 5, 4,
-  // Right
-  1, 2, 6,   1, 6, 5,
-  // Left
-  0, 4, 7,   0, 7, 3,
-]);
-
-function UVSphereVertices(uSteps, vSteps, r) {
-  let vertices = [];
   for (let i = 0; i <= vSteps; i++) {
-  const v = i * Math.PI / vSteps;
+    const v = i * Math.PI / vSteps;
     const sinv = Math.sin(v);
     const cosv = Math.cos(v);
+    
     for (let j = 0; j <= uSteps; j++) {
       const u = j * 2 * Math.PI / uSteps;
       const sinu = Math.sin(u);
       const cosu = Math.cos(u);
+
       const x = r * cosu * sinv;
       const y = r * cosv;
       const z = r * sinu * sinv;
+
       vertices.push(x, y, z);
+
+      const length = Math.hypot(x, y, z);
+      normals.push(x / length, y / length, z / length);
     }
   }
-  return new Float32Array(vertices);
-}
 
-function coneVertices(uSteps, vSteps, r, h) {
-  let vertices = [];
-  for (let i = 0; i <= vSteps; i++) {
-  const v = i / vSteps;
-    for (let j = 0; j <= uSteps; j++) {
-      const u = j * 2 * Math.PI / uSteps;
-      const sinu = Math.sin(u);
-      const cosu = Math.cos(u);
-      const x = r * (1-v) * cosu;
-      const y = r * (1-v) * sinu;
-      const z = h * v
-      vertices.push(x, y, z);
-    }
-  }
-  return new Float32Array(vertices);
-}
-
-function torusVertices(uSteps, vSteps, R, r) {
-  let vertices = [];
-  for (let i = 0; i <= vSteps; i++) {
-  const v = i * 2 * Math.PI / vSteps;
-    const sinv = Math.sin(v);
-    const cosv = Math.cos(v);
-    for (let j = 0; j <= uSteps; j++) {
-      const u = j * 2 * Math.PI / uSteps;
-      const sinu = Math.sin(u);
-      const cosu = Math.cos(u);
-      const x = (R + r*cosv) * cosu;
-      const y = (R + r*cosv) * sinu;
-      const z = r * sinv;
-      vertices.push(x, y, z);
-    }
-  }
-  return new Float32Array(vertices);
-}
-
-function indices(uSteps, vSteps) {
-  let indices = [];
   for (let i = 0; i < vSteps; i++) {
     for (let j = 0; j < uSteps; j++) {
-      const k1 = (i * (uSteps + 1)) + j;
-      const k2 = k1 + uSteps + 1;
-      indices.push(k1, k2, k1 + 1);
-      indices.push(k2, k2 + 1, k1 + 1);
+      const first = i * (uSteps + 1) + j;
+      const second = first + uSteps + 1;
+
+      indices.push(first, second, first + 1);
+      indices.push(second, second + 1, first + 1);
     }
   }
-  return new Uint16Array(indices);
+
+  return {
+    vertices: new Float32Array(vertices),
+    normals: new Float32Array(normals),
+    indices: new Uint16Array(indices)
+  };
 }
 
-function getColoursFromScheme(numVertices, sel) {
-  let colours;
-  switch (sel) {
-    case "sun": colours = getRandomColours(numVertices, 1, 0.15, 0.15, 0, 0.5, 0); break;
-    case "earth": colours = getRandomColours(numVertices, 0.33, 0, 0, 0, 1, 1); break;
-    case "mars": colours = getRandomColours(numVertices, 0.4, 0.2, 0.2, 0.7, 0.1, 0); break;
-    case "moon": colours = getRandomGreyscale(numVertices, 0.4, 0.4); break;
-    case "solar": colours = getRandomColours(numVertices, 0.3, 0.2, 0.9, 0.1, 0.1, 0.1); break;
-    case "gold": colours = getRandomColours(numVertices, 0.7, 0.55, 0.45, 0.2, 0.2, 0); break;
-    case "satelite": colours = getRandomGreyscale(numVertices, 0.6, 0.6); break;
+function createCone(uSteps, vSteps, r, h) {
+  let vertices = [];
+  let normals = [];
+  let indices = [];
+
+  const slant = Math.hypot(r, h);
+  const nxFactor = h / slant;
+  const nzFactor = r / slant;
+
+  for (let i = 0; i <= vSteps; i++) {
+    const v = i / vSteps;
+    for (let j = 0; j <= uSteps; j++) {
+      const u = j * 2 * Math.PI / uSteps;
+      const sinu = Math.sin(u);
+      const cosu = Math.cos(u);
+
+      const x = r * (1 - v) * cosu;
+      const y = r * (1 - v) * sinu;
+      const z = h * v;
+      vertices.push(x, y, z);
+
+      if (v === 1.0) {
+        normals.push(0, 0, 1);
+      } else {
+        // formula i found online :)
+        normals.push(cosu * nxFactor, sinu * nxFactor, nzFactor);
+      }
+    }
   }
-  return colours;
+
+  for (let i = 0; i < vSteps; i++) {
+    for (let j = 0; j < uSteps; j++) {
+      const first = i * (uSteps + 1) + j;
+      const second = first + uSteps + 1;
+
+      indices.push(first, second, first + 1);
+      indices.push(second, second + 1, first + 1);
+    }
+  }
+
+  return {
+    vertices: new Float32Array(vertices),
+    normals: new Float32Array(normals),
+    indices: new Uint16Array(indices)
+  };
 }
 
-function getRandomColours(vertexCount, rBase, gBase, bBase, rVar, gVar, bVar) {
-  let colours = [];
-  for (let i = 0; i <= vertexCount; i++) {
-    colours.push(rBase+rVar*Math.random(), gBase+gVar*Math.random(), bBase+bVar*Math.random());
+function createTorus(u, v, majorRadius, minorRadius) {
+  let vertices = [];
+  let normals = [];
+  let indices = [];
+
+  for (let i = 0; i <= u; i++) {
+    let uAngle = (i / u) * 2 * Math.PI;
+    let cosU = Math.cos(uAngle);
+    let sinU = Math.sin(uAngle);
+
+    for (let j = 0; j <= v; j++) {
+      let vAngle = (j / v) * 2 * Math.PI;
+      let cosV = Math.cos(vAngle);
+      let sinV = Math.sin(vAngle);
+
+      let x = (majorRadius + minorRadius * cosV) * cosU;
+      let y = minorRadius * sinV;
+      let z = (majorRadius + minorRadius * cosV) * sinU;
+      vertices.push(x, y, z);
+
+      let nx = cosV * cosU;
+      let ny = sinV;
+      let nz = cosV * sinU;
+      normals.push(nx, ny, nz);
+    }
   }
-  return new Float32Array(colours);
+
+  for (let i = 0; i < u; i++) {
+    for (let j = 0; j < v; j++) {
+      let first = i * (v + 1) + j;
+      let second = (i + 1) * (v + 1) + j;
+
+      indices.push(first, second, first + 1);
+      indices.push(second, second + 1, first + 1);
+    }
+  }
+
+  return {
+    vertices: new Float32Array(vertices),
+    normals: new Float32Array(normals),
+    indices: new Uint16Array(indices)
+  };
 }
 
-function getRandomGreyscale(vertexCount, base, variance) {
-  let colours = [];
-  for (let i = 0; i <= vertexCount; i++) {
-    let rand = Math.random();
-    colours.push(base+variance*rand, base+variance*rand, base+variance*rand);
-  }
-  return new Float32Array(colours);
-}
