@@ -15,7 +15,7 @@ async function loadMarkdownToElement(path, elementId) {
 }
 // initialize all dynamic elements
 document.addEventListener('DOMContentLoaded', () => {
-    loadMarkdownToElement('../public/text/projects/langlocked/about.md', 'about-content');
-    loadMarkdownToElement('../public/text/projects/langlocked/techreport.md', 'tech-content');
-    loadMarkdownToElement('../public/text/projects/langlocked/futurework.md', 'future-content');
+    loadMarkdownToElement('../../public/text/projects/langlocked/about.md', 'about-content');
+    loadMarkdownToElement('../../public/text/projects/langlocked/techreport.md', 'tech-content');
+    loadMarkdownToElement('../../public/text/projects/langlocked/futurework.md', 'future-content');
 });
