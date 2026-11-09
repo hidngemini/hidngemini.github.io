@@ -1,0 +1,3 @@
+Virtual Dancer
+Virtual Dancer is a WebGL2 based Dancing Robot that uses Computer vision to match the dance motions of a given dance practice video.
+HTML5, CSS3, JavaScript, WebGL2, GLSL

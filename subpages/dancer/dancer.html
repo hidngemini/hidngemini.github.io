@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dancer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- shader editors -->
+    <div class="column-editors">
+      <div class="editor-card">
+        <b>Vertex Shader</b>
+        <textarea id="vertEditor"></textarea>
+      </div>
+      <div class="editor-card">
+        <b>Fragment Shader</b>
+        <textarea id="fragEditor"></textarea>
+      </div>
+    </div>
+
+    <!-- webgl canvas -->
+    <div class="column-viewer">
+      <div class="canvas-card">
+        <canvas id="glcanvas" width="480" height="360"></canvas>
+      </div>
+      <p class="instructions">Drag to rotate · arrow keys pan · W/S zoom <br> Thanks to the following people on YouTube for their amazing solos! <br> - LaNxtalie<br> - 현추 (Hyeonchu)<br> - imlisarhee<br>They all did an amazing job with their solo covers!</p>
+    </div>
+
+    <!-- video + controls -->
+    <div class="column-controls">
+      <div class="options">
+        <div class="options-group-title">Dance Video</div>
+        
+        <!-- saved dances -->
+        <select id="danceSelect">
+          <option value="">-- Choose a saved dance --</option>
+          <option value="./savedDances/jellyous.mp4">ILLIT - Jellyous [performed by LaNxtalie]</option>
+          <option value="./savedDances/fearless.mp4">LE SSERAFIM - FEARLESS [performed by 현추]</option>
+          <option value="./savedDances/magnetic.mp4">ILLIT - MAGNETIC [performed by imlisarhee]</option>
+          <option value="./savedDances/antifragile.mp4">LE SSERAFIM - ANTIFRAGILE [performed by imlisarhee]</option>
+          <option value="./savedDances/spaghetti.mp4">LE SSERAFIM - SPAGHETTI [performed by LaNxtalie]</option>
+        </select>
+        <div class="upload-label">Or upload your own file:</div>
+        
+        <input type="file" id="videoFile" accept="video/mp4,video/*">
+        <div id="status">Loading pose model…</div>
+        <div class="media-box">
+          <video id="video" controls loop playsinline></video>
+          <canvas id="overlay" width="320" height="240"></canvas>
+        </div>
+
+        <div class="options-group-title">Tracking</div>
+        <div class="control-row">
+          <label>Smoothing</label>
+          <div class="slider-container">
+            <input type="range" min="0" max="0.9" value="0.5" step="0.05" id="smoothing">
+          </div>
+        </div>
+        <div class="control-row">
+          <label for="rotTorso">Rotate torso</label>
+          <input type="checkbox" id="rotTorso" checked>
+        </div>
+        <div class="control-row">
+          <label for="mirror">Learning Mode (Mirror)</label>
+          <input type="checkbox" id="mirror">
+        </div>
+        <div class="control-row">
+          <label for="invertDepth">Invert depth</label>
+          <input type="checkbox" id="invertDepth">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script id="vertex-shader" type="x-shader/x-vertex">#version 300 es
+in vec3 aPosition;
+in vec3 aNormal;
+
+uniform float uTime;
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
+uniform mat4 uModelTransformationMatrix;
+
+out vec3 vPosition;
+out vec3 vNormal;
+flat out vec3 vFlatNormal;
+
+void main() {
+  vec4 p = uModelViewMatrix * uModelTransformationMatrix * vec4(aPosition, 1.0);
+  vPosition = p.xyz;
+  vNormal = mat3(transpose(inverse(uModelViewMatrix * uModelTransformationMatrix))) * aNormal;
+  vFlatNormal = vNormal;
+  gl_Position = uProjectionMatrix * p;
+}
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">#version 300 es
+precision mediump float;
+
+in vec3 vPosition;
+in vec3 vNormal;
+flat in vec3 vFlatNormal;
+
+uniform bool isFaceted;
+uniform vec3 uColour;
+uniform vec3 uLightPos;
+uniform vec3 uLightPos2;
+uniform float shininess;
+
+out vec4 fragColor;
+
+void main() {
+  vec3 Ka = 0.2 * uColour;
+  vec3 Kd = 0.55 * uColour;
+  vec3 Ks = vec3(0.35);
+  vec3 Kd2 = 0.25 * uColour;
+  vec3 Ks2 = vec3(0.15);
+
+  vec3 N;
+  if (isFaceted) {
+    N = normalize(vFlatNormal);
+  } else {
+    N = normalize(vNormal);
+  }
+  vec3 L = normalize(uLightPos);
+  vec3 V = normalize(-vPosition);
+  vec3 R = reflect(-L, N);
+
+  float diff = max(dot(N, L), 0.0);
+  float spec = pow(max(dot(V, R), 0.0), shininess);
+
+  vec3 L2 = normalize(uLightPos2);
+  vec3 R2 = reflect(-L2, N);
+
+  float diff2 = max(dot(N, L2), 0.0);
+  float spec2 = pow(max(dot(V, R2), 0.0), shininess);
+
+  vec3 diffuse = Kd * diff + Kd2 * diff2;
+  vec3 specular = Ks * spec + Ks2 * spec2;
+
+  fragColor = vec4(Ka + diffuse + specular, 1.0);
+}
+  </script>
+
+  <script src="primitives.js"></script>
+  <script src="transformations.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

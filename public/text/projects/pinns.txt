@@ -1,0 +1,3 @@
+Physics Encoded Neural Network Research
+Over the summer of 2025, I spent several months working closely with Dr. Adam A. Smith in an effor to model cirrus cloud crystal formation using Physics Encoded Neural Networks.
+Python, PyTorch

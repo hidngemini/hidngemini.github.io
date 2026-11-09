@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>CS512 HW5 - Orrery Model w/Lighting</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<div class="app-container">
+  <!-- 1. Left Column: Shader Editors -->
+  <div class="column-editors">
+    <div class="editor-card">
+      <b>Vertex Shader</b>
+      <textarea id="vertEditor"></textarea>
+    </div>
+    <div class="editor-card">
+      <b>Fragment Shader</b>
+      <textarea id="fragEditor"></textarea>
+    </div>
+  </div>
+
+  <!-- 2. Middle Column: Canvas Viewport -->
+  <div class="column-viewer">
+    <div class="canvas-card">
+      <canvas id="glcanvas" width="600" height="500"></canvas>
+    </div>
+  </div>
+
+  <!-- 3. Right Column: Controls Panel -->
+  <div class="column-controls">
+    <div class="options">
+      <div class="options-group-title">Lighting Mode</div>
+      <div class="control-row">
+        <label for="isFaceted">Use Faceted Lighting?</label>
+        <input type="checkbox" id="isFaceted" checked>
+      </div>
+
+      <div class="options-group-title">Orbital Controls</div>
+      <div class="control-row">
+        <label>Earth Orbit</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="6.28" value="0" step="0.01" id="sunRotation">
+        </div>
+        <label><input type="checkbox" id="sunAnim" checked> Animate</label>
+      </div>
+
+      <div class="control-row">
+        <label>Moon Orbit</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="6.28" value="0" step="0.01" id="earthRotation">
+        </div>
+        <label><input type="checkbox" id="earthAnim" checked> Animate</label>
+      </div>
+
+      <div class="control-row">
+        <label>Satellite Orbit</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="6.28" value="0" step="0.01" id="moonRotation">
+        </div>
+        <label><input type="checkbox" id="moonAnim" checked> Animate</label>
+      </div>
+
+      <div class="control-row">
+        <label>Mars Orbit</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="6.28" value="0" step="0.01" id="marsRotation">
+        </div>
+        <label><input type="checkbox" id="marsAnim" checked> Animate</label>
+      </div>
+
+      <div class="options-group-title">Material Shininess</div>
+      <div class="control-row">
+        <label>Sun</label>
+        <input type="range" min="0.1" max="1000" value="1000" step="0.01" id="sunShine">
+      </div>
+      <div class="control-row">
+        <label>Earth</label>
+        <input type="range" min="0.1" max="1000" value="1000" step="0.01" id="earthShine">
+      </div>
+      <div class="control-row">
+        <label>Moon</label>
+        <input type="range" min="0.1" max="1000" value="1000" step="0.01" id="moonShine">
+      </div>
+      <div class="control-row">
+        <label>Satellite</label>
+        <input type="range" min="0.1" max="1000" value="1000" step="0.01" id="satShine">
+      </div>
+      <div class="control-row">
+        <label>Mars</label>
+        <input type="range" min="0.1" max="1000" value="1000" step="0.01" id="marsShine">
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Vertex shader -->
+  <script id="vertex-shader" type="x-shader/x-vertex">#version 300 es
+in vec3 aPosition;
+in vec3 aNormal;
+
+uniform float uTime; //time in sec
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
+uniform mat4 uModelTransformationMatrix;
+
+out vec3 vPosition;
+out vec3 vNormal;
+flat out vec3 vFlatNormal;
+
+void main() {
+  vec4 p = uModelViewMatrix * uModelTransformationMatrix * vec4(aPosition, 1.0);
+  vPosition = p.xyz;
+  vNormal = mat3(transpose(inverse(uModelViewMatrix * uModelTransformationMatrix))) * aNormal;
+  vFlatNormal = vNormal;
+  gl_Position = uProjectionMatrix * p;
+}
+</script>
+  <!-- Fragment Shader -->
+  <script id="fragment-shader" type="x-shader/x-fragment">#version 300 es
+precision mediump float;
+
+in vec3 vPosition;
+in vec3 vNormal;
+flat in vec3 vFlatNormal;
+
+uniform bool isFaceted;
+uniform vec3 uColour;
+uniform vec3 uLightPos;
+uniform vec3 uLightPos2;
+uniform float shininess;
+
+out vec4 fragColor;
+
+void main() {
+  vec3 Ka = 0.2 * uColour;
+  vec3 Kd = 0.55 * uColour;
+  vec3 Ks = vec3(0.35);
+  vec3 Kd2 = 0.25 * uColour;
+  vec3 Ks2 = vec3(0.15);
+
+  vec3 N;
+  if (isFaceted) {
+    N = normalize(vFlatNormal);
+  } else {
+    N = normalize(vNormal);
+  }
+  vec3 L = normalize(uLightPos);
+  vec3 V = normalize(-vPosition);
+  vec3 R = reflect(-L, N);
+
+  float diff = max(dot(N, L), 0.0);
+  float spec = pow(max(dot(V, R), 0.0), shininess);
+
+  vec3 L2 = normalize(uLightPos2);
+  vec3 R2 = reflect(-L2, N);
+
+  float diff2 = max(dot(N, L2), 0.0);
+  float spec2 = pow(max(dot(V, R2), 0.0), shininess);
+  
+  vec3 diffuse = Kd * diff + Kd2 * diff2;
+  vec3 specular = Ks * spec + Ks2 * spec2;
+
+  fragColor = vec4(Ka + diffuse + specular, 1.0);
+}
+
+</script>
+
+  <script src="primitives.js"></script>
+  <script src="transformations.js"></script>
+
+  <script>
+    class Body {
+      constructor(vs, is, ns) {
+        this.vertices = vs;
+        this.indices = is;
+        this.normals = ns;
+      }
+    }
+
+    class AttributeBody extends Body {
+      constructor(vs, is, ns, size, position, colour, shininess) {
+        super(vs, is, ns);
+        this.position = position;
+        this.colour = colour;
+        this.size = size;
+        this.rotate = mat4Identity();
+        this.shininess = shininess;
+      }
+      get transform() {
+        let scale = new Float32Array([this.size[0], 0, 0, 0, 0, this.size[1], 0, 0, 0, 0, this.size[2], 0, 0, 0, 0, 1]);
+        let translate = mat4Translate(mat4Identity(), this.position);
+        let mid = multiplyMat4(this.rotate,scale);
+        return multiplyMat4(translate, mid);
+      }
+    }
+
+    class ComplexObject {
+      constructor() {
+        this.bodies = [];
+        this.modelSpaceTransform = mat4Identity();
+      }
+      push(obj) {
+        this.bodies.push(obj);
+      }
+    }
+
+    class HeirarchicalModelNode {
+      constructor(complexObj, transform) {
+        this.body = complexObj;
+        this.transform = transform;
+        this.children = [];
+      }
+    }
+
+    function createShader(gl, type, source) {
+      let shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    function createProgram(gl, vsSource, fsSource) {
+      let vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+      let fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+      let prog = gl.createProgram();
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(prog));
+      }
+      return prog;
+    }
+
+    // WebGL setup
+    const canvas = document.getElementById("glcanvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) alert("WebGL2 not supported");
+
+    let vertEditor = document.getElementById("vertEditor");
+    let fragEditor = document.getElementById("fragEditor");
+    vertEditor.value = document.getElementById("vertex-shader").textContent;
+    fragEditor.value = document.getElementById("fragment-shader").textContent;
+
+    let program, posLoc, normLoc, colourLoc, lightPosLoc, light2PosLoc, timeLoc, facetLoc, shininessLoc, uMVM, uPM, uMTM;
+    let vbo, nbo, ibo;
+
+    let anim = [true,true,true,true];
+    let isFaceted = false;
+
+    let heirarchicalObjects = [];
+
+    let u = 16;
+    let v = 8;
+
+    let vs, ns, is, aBody;
+
+    /*
+    #################################
+    #                               #
+    #     Setting up the object     #
+    #                               #
+    #################################
+    */
+
+
+    // define some colours
+    const gold = [1,0.7,0];
+    const marsRed = [0.8,0.2,0.2];
+    const sunRed = [1,0.333,0];
+    const earthBlue = [0,0.6,0.6];
+    const moonGrey = [0.5,0.5,0.6];
+    const sateliteMetal = [0.3,0.3,0.33];
+    const solarPanelBlue = [0,0.4,0.8];
+
+    // generate vertices, normals, and indices for all shapes we will need
+    let cube = createCube();
+    let sphere = createUVSphere(u, v, 1);
+    let cone = createCone(u, v, 1, 1);
+    let torus = createTorus(u, v, 1, 2);
+
+    // setup base object
+    let cObj = new ComplexObject();
+    
+    // base torus
+    vs = torus.vertices;
+    ns = torus.normals;
+    is = torus.indices;
+    aBody = new AttributeBody(vs, is, ns, [0.8,0.1,0.8], [0,1,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // base legs
+    vs = cube.vertices;
+    is = cube.indices;
+    ns = cube.normals;
+
+    // leg 1
+    aBody = new AttributeBody(vs, is, ns, [0.3,0.1,2], [0,0,-1], gold, 3.0);
+    aBody.rotate = mat4RotateX(mat4Identity(), -Math.PI/3);
+    cObj.push(aBody);
+
+    // leg 2
+    aBody = new AttributeBody(vs, is, ns, [0.3,0.1,2], [0,0,1], gold, 3.0);
+    aBody.rotate = mat4RotateX(mat4Identity(), Math.PI/3);
+    cObj.push(aBody);
+
+    // leg 3
+    aBody = new AttributeBody(vs, is, ns, [0.3,0.1,2], [1,0,0], gold, 3.0);
+    aBody.rotate = mat4RotateX(mat4RotateY(mat4Identity(), Math.PI/2), Math.PI/3);
+    cObj.push(aBody);
+
+    // leg 4
+    aBody = new AttributeBody(vs, is, ns, [0.3,0.1,2], [-1,0,0], gold, 3.0);
+    aBody.rotate = mat4RotateX(mat4RotateY(mat4Identity(), 3*Math.PI/2), Math.PI/3);
+    cObj.push(aBody);
+
+    // setup base plate node (this will be the root of our tree)
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,-2.5,0]);
+    let baseNode = new HeirarchicalModelNode(cObj, mat4Identity());
+
+    // setup sun object
+    cObj = new ComplexObject(); // sun object container
+
+    // sun sphere
+    vs = sphere.vertices;
+    ns = sphere.normals;
+    is = sphere.indices;
+    sunABody = new AttributeBody(vs, is, ns, [1.2,1.2,1.2], [0,0,0], sunRed, 10.0);
+    cObj.push(sunABody);
+
+    // sun stick
+    vs = cube.vertices;
+    ns = cube.normals;
+    is = cube.indices;
+    aBody = new AttributeBody(vs, is, ns, [0.1,0.8,0.1], [0,-2,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup sun node
+    let sunNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,4.5,0]);
+    baseNode.children.push(sunNode);
+
+    // setup sun to earth stick object
+    cObj = new ComplexObject();
+
+    // sun to earth stick
+    aBody = new AttributeBody(vs, is, ns, [3,0.1,0.1], [2.9,-2.1,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup sun-earth stick node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,0,0]);
+    let sun2earthNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    sunNode.children.push(sun2earthNode);
+
+    // setup earth object
+    cObj = new ComplexObject();
+  
+    // // earth sphere
+    vs = sphere.vertices;
+    ns = sphere.normals;
+    is = sphere.indices;
+    earthABody = new AttributeBody(vs, is, ns, [0.6,0.6,0.6], [0,0,0], earthBlue, 1000.0);
+    cObj.push(earthABody);
+
+    // earth stick
+    vs = cube.vertices;
+    ns = cube.normals;
+    is = cube.indices;
+    aBody = new AttributeBody(vs, is, ns, [0.1,0.8,0.1], [0,-1.3,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup earth node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [5.8,0,0]);
+    let earthNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    sun2earthNode.children.push(earthNode);
+
+    // setup earth to moon stick object
+    cObj = new ComplexObject();
+
+    // earth to moon stick
+    aBody = new AttributeBody(vs, is, ns, [1.2,0.1,0.1], [-1.2,-1,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup earth-moon stick node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [5.8,0,0]);
+    let earth2moonNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    sun2earthNode.children.push(earth2moonNode);
+
+    // setup moon object
+    cObj = new ComplexObject();
+
+    // moon sphere
+    vs = sphere.vertices;
+    ns = sphere.normals;
+    is = sphere.indices;
+    moonABody = new AttributeBody(vs, is, ns, [0.3,0.3,0.3], [0,0,0], moonGrey, 1000.0);
+    cObj.push(moonABody);
+
+    // moon stick
+    vs = cube.vertices;
+    ns = cube.normals;
+    is = cube.indices;
+    aBody = new AttributeBody(vs, is, ns, [0.1,0.4,0.1], [0,-0.7,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup moon node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [-2.3,0,0]);
+    let moonNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    earth2moonNode.children.push(moonNode);
+
+    // setup earth to moon stick object
+    cObj = new ComplexObject();
+
+    // moon to satelite stick
+    aBody = new AttributeBody(vs, is, ns, [0.5,0.1,0.1], [0.4,-0.5,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup moon-satelite stick node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [-2.3,0,0]);
+    let moon2sateliteNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    earth2moonNode.children.push(moon2sateliteNode);
+
+    // setup satelite object
+    cObj = new ComplexObject();
+
+    // satelite cone body
+    vs = cone.vertices;
+    ns = cone.normals;
+    is = cone.indices;
+    satABody = new AttributeBody(vs, is, ns, [0.15,0.15,-0.6], [0,0,0.3], sateliteMetal, 1.0);
+    cObj.push(satABody);
+
+    // satelite rectangle solar panels
+    vs = cube.vertices;
+    ns = cube.normals;
+    is = cube.indices;
+    satABody2 = new AttributeBody(vs, is, ns, [0.3,0.02,0.1], [0,0,0.1], solarPanelBlue, 1.0);
+    cObj.push(satABody2);
+
+    // satelite stick
+    aBody = new AttributeBody(vs, is, ns, [0.1,0.3,0.1], [0,-0.3,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup satelite node
+    let sateliteNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    moon2sateliteNode.children.push(sateliteNode);
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0.9,0,0]);
+
+    // setup sun to earth stick object
+    cObj = new ComplexObject();
+
+    // sun to mars stick
+    aBody = new AttributeBody(vs, is, ns, [5,0.1,0.1], [4.9,-2.8,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup sun-mars stick node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [0,0,0]);
+    let sun2marsNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    sunNode.children.push(sun2marsNode);
+
+    // setup mars object
+    cObj = new ComplexObject();
+  
+    // mars sphere
+    vs = sphere.vertices;
+    ns = sphere.normals;
+    is = sphere.indices;
+    marsABody = new AttributeBody(vs, is, ns, [0.5,0.5,0.5], [0,0,0], marsRed, 1000.0);
+    cObj.push(marsABody);
+
+    // mars stick
+    vs = cube.vertices;
+    ns = cube.normals;
+    is = cube.indices;
+    aBody = new AttributeBody(vs, is, ns, [0.1,1.1,0.1], [0,-1.6,0], gold, 3.0);
+    cObj.push(aBody);
+
+    // setup mars node
+    cObj.globalSpaceTransform = mat4Translate(mat4Identity(), [9.8,0,0]);
+    let marsNode = new HeirarchicalModelNode(cObj, mat4Identity());
+    sun2marsNode.children.push(marsNode);
+
+    heirarchicalObjects.push(baseNode);
+
+    /*
+    ##################################
+    #                                #
+    #           Functions            #
+    #                                #
+    ##################################
+    */
+
+    function DFSTransformGen(tree, transform) { 
+      let modelTransformPairs = [];
+      let gst = tree.body.globalSpaceTransform; // global space transform
+      let brt = tree.transform // body rotation transform
+      let localTransform = multiplyMat4(gst, brt);
+      transform = multiplyMat4(transform, localTransform);
+      tree.children.forEach(child => {
+        let subArr = DFSTransformGen( child, transform);
+        modelTransformPairs = modelTransformPairs.concat(subArr);
+      });
+
+      modelTransformPairs.push(([tree.body, transform]));
+      return modelTransformPairs;
+    }
+
+    function initBuffers(vs, is, ns) {
+      vbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, vs, gl.STATIC_DRAW);
+
+      nbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, nbo);
+      gl.bufferData(gl.ARRAY_BUFFER, ns, gl.STATIC_DRAW);
+      gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(normLoc);
+
+      ibo = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, is, gl.STATIC_DRAW);
+    }
+
+    function initShaderProgram() {
+      try {
+        program = createProgram(gl, vertEditor.value, fragEditor.value);
+        gl.useProgram(program);
+        posLoc = gl.getAttribLocation(program, "aPosition");
+        normLoc = gl.getAttribLocation(program, "aNormal");
+        colourLoc = gl.getUniformLocation(program, "uColour");
+        lightPosLoc = gl.getUniformLocation(program, "uLightPos");
+        light2PosLoc = gl.getUniformLocation(program, "uLightPos2");
+        shininessLoc = gl.getUniformLocation(program, "shininess");
+        timeLoc = gl.getUniformLocation(program, "uTime");
+        facetLoc = gl.getUniformLocation(program, "isFaceted");
+        uMVM = gl.getUniformLocation(program, "uModelViewMatrix");
+        uPM = gl.getUniformLocation(program, "uProjectionMatrix");
+        uMTM = gl.getUniformLocation(program, "uModelTransformationMatrix");
+      } catch (e) { console.error(e); }
+    }
+    initShaderProgram();
+    vertEditor.onkeyup = initShaderProgram;
+    fragEditor.onkeyup = initShaderProgram;
+
+    // Mouse and keyboard interactions
+    let mouseDown = false, lastX, lastY, cubeRotX = 0, cubeRotY = 0;
+    let camX = 0, camY = 0, camZ = -24;
+
+    let startTime = Date.now();
+
+    canvas.addEventListener('mousedown', e => { mouseDown = true; lastX = e.clientX; lastY = e.clientY; });
+    canvas.addEventListener('mouseup', () => mouseDown = false);
+    canvas.addEventListener('mousemove', e => {
+      if (!mouseDown) return;
+      let dx = e.clientX - lastX;
+      let dy = e.clientY - lastY;
+      cubeRotY += dx * 0.01;
+      cubeRotX += dy * 0.01;
+      lastX = e.clientX; lastY = e.clientY;
+    });
+
+    document.addEventListener('keydown', e => {
+      const step = 0.2;
+      switch (e.key) {
+        case 'ArrowUp': camY -= step; break;
+        case 'ArrowDown': camY += step; break;
+        case 'ArrowLeft': camX += step; break;
+        case 'ArrowRight': camX -= step; break;
+        case 'w': camZ += step; break;
+        case 's': camZ -= step; break;
+      }
+    });
+
+    // Buttons and Sliders and Such Setup
+    const sunSlider = document.getElementById('sunRotation');
+    const earthSlider = document.getElementById('earthRotation');
+    const moonSlider = document.getElementById('moonRotation');
+    const marsSlider = document.getElementById('marsRotation');
+
+    const sunAnim = document.getElementById('sunAnim');
+    const earthAnim = document.getElementById('earthAnim');
+    const moonAnim = document.getElementById('moonAnim');
+    const marsAnim = document.getElementById('marsAnim');
+
+    const facetedButton = document.getElementById('isFaceted');
+
+    const sunShineSlider = document.getElementById('sunShine');
+    const earthShineSlider = document.getElementById('earthShine');
+    const moonShineSlider = document.getElementById('moonShine');
+    const marsShineSlider = document.getElementById('marsShine');
+    const sateliteShineSlider = document.getElementById('satShine');
+
+    // add slider functionality
+    sunSlider.addEventListener("change", function() {
+      let sunRotation = Number(sunSlider.value);
+
+      sun2earthNode.transform = mat4RotateY(mat4Identity(), sunRotation);
+    });
+
+    earthSlider.addEventListener("change", function() {
+      let earthRotation = Number(earthSlider.value);
+
+      earth2moonNode.transform = mat4RotateY(mat4Identity(), earthRotation);
+    });
+
+    moonSlider.addEventListener("change", function() {
+      let moonRotation = Number(moonSlider.value);
+
+      moon2sateliteNode.transform = mat4RotateY(mat4Identity(), moonRotation);
+    });
+
+    marsSlider.addEventListener("change", function() {
+      let marsRotation = Number(marsSlider.value);
+
+      sun2marsNode.transform = mat4RotateY(mat4Identity(), marsRotation);
+    });
+
+    sunAnim.addEventListener("change", function() {
+      anim[0] = sunAnim.checked;
+      if (!anim[0]) {
+        let sunRotation = Number(sunSlider.value);
+        sun2earthNode.transform = mat4RotateY(mat4Identity(), sunRotation);
+      }
+    });
+
+    earthAnim.addEventListener("change", function() {
+      anim[1] = earthAnim.checked;
+      if (!anim[1]) {
+        let earthRotation = Number(earthSlider.value);
+        earth2moonNode.transform = mat4RotateY(mat4Identity(), earthRotation);
+      }
+    });
+
+    moonAnim.addEventListener("change", function() {
+      anim[2] = moonAnim.checked;
+      if (!anim[2]) {
+        let moonRotation = Number(moonSlider.value);
+        moon2sateliteNode.transform = mat4RotateY(mat4Identity(), moonRotation);
+      }
+    });
+
+    marsAnim.addEventListener("change", function() {
+      anim[3] = marsAnim.checked;
+      if (!anim[3]) {
+        let marsRotation = Number(marsSlider.value);
+        sun2marsNode.transform = mat4RotateY(mat4Identity(), marsRotation);
+      }
+    });
+
+    facetedButton.addEventListener("change", function() {
+      isFaceted = facetedButton.checked;
+    });
+
+    sunShineSlider.addEventListener("change", function() {
+      let sunShine = Number(sunShineSlider.value);
+
+      sunABody.shininess = sunShine;
+    });
+
+    earthShineSlider.addEventListener("change", function() {
+      let earthShine = Number(earthShineSlider.value);
+
+      earthABody.shininess = earthShine;
+    });
+
+    moonShineSlider.addEventListener("change", function() {
+      let moonShine = Number(moonShineSlider.value);
+
+      moonABody.shininess = moonShine;
+    });
+
+    marsShineSlider.addEventListener("change", function() {
+      let marsShine = Number(marsShineSlider.value);
+
+      marsABody.shininess = marsShine;
+    });
+
+    sateliteShineSlider.addEventListener("change", function() {
+      let sateliteShine = Number(sateliteShineSlider.value);
+
+      satABody.shininess = sateliteShine;
+      satABody2.shininess = sateliteShine;
+    });
+
+    // Projection setup
+    let fov = Math.PI / 4, aspect = canvas.width / canvas.height, zNear = 0.1, zFar = 100;
+
+    let orthoSize = 2.5;
+
+    // Perspective and Orthographic projection
+    let projPerspective = perspective(fov, aspect, zNear, zFar);
+
+    let proj = projPerspective;
+
+    function subRender(rotation, deltaTime, vs, is, ns, transform, colour, shininess) {
+      // init model transformation matrix as identity matrix
+      let modelTransformationMatrix = transform;
+
+      // object rotation based on camera
+      modelTransformationMatrix = multiplyMat4(rotation, modelTransformationMatrix);
+
+      gl.uniformMatrix4fv(uMTM, false, modelTransformationMatrix);
+
+      // light movements
+      let lightModelPos = [0, 0.1, 0]; 
+      let lightRotated = transformPoint(rotation, lightModelPos);
+      gl.uniform3fv(lightPosLoc, lightRotated);
+
+      let light2ModelPos = [-1, -1, 1]; 
+      let light2Rotated = transformPoint(rotation, light2ModelPos);
+      gl.uniform3fv(light2PosLoc, light2Rotated);
+
+      gl.uniform1f(shininessLoc, shininess);
+
+      initBuffers(vs, is, ns);
+
+      // bind vertices
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.enableVertexAttribArray(posLoc);
+      gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+      // bind normals
+      gl.bindBuffer(gl.ARRAY_BUFFER, nbo);
+      gl.enableVertexAttribArray(normLoc);
+      gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+
+      gl.uniform3fv(colourLoc, colour);
+
+      // draw the object by the index order
+      gl.drawElements(gl.TRIANGLES, is.length, gl.UNSIGNED_SHORT, 0);
+    }
+
+    function renderScene() {
+      gl.enable(gl.DEPTH_TEST);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // rotation matrices
+      let cx = Math.cos(cubeRotY), sx = Math.sin(cubeRotY);
+      let cy = Math.cos(cubeRotX), sy = Math.sin(cubeRotX);
+      let rotX = [1, 0, 0, 0, 0, cy, sy, 0, 0, -sy, cy, 0, 0, 0, 0, 1];
+      let rotY = [cx, 0, -sx, 0, 0, 1, 0, 0, sx, 0, cx, 0, 0, 0, 0, 1];
+      let rotation = multiplyMat4(rotY, rotX);
+
+      // init model-view matrix as identity matrix
+      let modelViewMatrix = mat4Identity();
+
+      // delta time in ms
+      let deltaTime = Date.now() - startTime;
+
+      // camera translation
+      modelViewMatrix = mat4Translate(modelViewMatrix, [camX, camY, camZ]);
+      
+      //set time in seconds
+      gl.uniform1f(timeLoc, deltaTime/1000.0);
+      gl.uniform1i(facetLoc, isFaceted);
+      gl.uniformMatrix4fv(uPM, false, proj);
+      gl.uniformMatrix4fv(uMVM, false, modelViewMatrix);
+
+      
+
+      for (var i = 0; i < heirarchicalObjects.length; i++) {
+        let hObj = heirarchicalObjects[i];
+        renderHeirarchicalObject(hObj, deltaTime, rotation);
+      }
+    }
+
+    function renderHeirarchicalObject(hObj, deltaTime, camRotation) {
+      let modelTransformPairs = DFSTransformGen(hObj, mat4Identity());
+      for (var i = 0; i < modelTransformPairs.length; i++) {
+        let cObj = modelTransformPairs[i][0];
+        let transform = modelTransformPairs[i][1];
+        renderComplexObject(cObj, deltaTime, camRotation, transform);
+      }
+    }
+
+    function renderComplexObject(cObj, deltaTime, camRotation, transform) {
+      for (var i = 0; i < cObj.bodies.length; i++) {
+        let aBody = cObj.bodies[i];
+        renderAttributeBody(aBody, deltaTime, camRotation, transform);
+      }
+    }
+
+    function renderAttributeBody(aBody, deltaTime, camRotation, transform) {
+      let vs = aBody.vertices;
+      let is = aBody.indices;
+      let ns = aBody.normals;
+      let c = aBody.colour;
+      let shininess = aBody.shininess;
+
+      transform = multiplyMat4(transform, aBody.transform);
+
+      subRender(camRotation, deltaTime, vs, is, ns, transform, c, shininess);
+    }
+
+    function updateAnim() {
+      let deltaTime = Date.now() - startTime;
+      if (anim[0]) {
+        sun2earthNode.transform = mat4RotateY(mat4Identity(), deltaTime/10/365);
+      }
+      if (anim[1]) {
+        earth2moonNode.transform = mat4RotateY(mat4Identity(), deltaTime/10/27.3);
+      }
+      if (anim[2]) {
+        moon2sateliteNode.transform = mat4RotateY(mat4Identity(), deltaTime/200);
+      }
+      if (anim[3]) {
+        sun2marsNode.transform = mat4RotateY(mat4Identity(), deltaTime/10/687);
+      }
+    }
+
+    // Initialize when page loads
+    window.onload = function () {
+      setInterval(updateAnim, 10);
+      setInterval(renderScene, 10);
+    }
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,1 @@
+Lang Locked is a Minecraft mod that utilizes Simple Voice Chat to listen to you speak and grade you on your Korean! Periodically, Lang Locked gives you a quiz on how to say a Minecraft item in Korean. Depending on the mode, it'll either reward you for a correct answer, or punish you for an incorrect answer!

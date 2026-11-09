@@ -1,0 +1,18 @@
+[
+  { "name": "Java", "icon": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" },
+  { "name": "Python", "icon": "https://cdn.simpleicons.org/python/3776AB" },
+  { "name": "PyTorch", "icon": "https://cdn.simpleicons.org/pytorch/EE4C2C" },
+  { "name": "NumPy", "icon": "https://cdn.simpleicons.org/numpy/1abce8" },
+  { "name": "MatPlotLib", "icon": "https://upload.wikimedia.org/wikipedia/commons/8/84/Matplotlib_icon.svg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original" },
+  { "name": "SQL", "icon": "https://cdn.simpleicons.org/postgresql/4169E1" },
+  { "name": "HTML5", "icon": "https://cdn.simpleicons.org/html5/E34F26" },
+  { "name": "CSS3", "icon": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg" },
+  { "name": "JavaScript", "icon": "https://cdn.simpleicons.org/javascript/F7DF1E" },
+  { "name": "Express", "icon": "https://cdn.simpleicons.org/express/FFFFFF" },
+  { "name": "GLSL", "icon": "https://cdn.simpleicons.org/opengl/5586A4" },
+  { "name": "Linux", "icon": "https://cdn.simpleicons.org/linux/FCC624" },
+  { "name": "Bash", "icon": "https://cdn.simpleicons.org/gnubash/4EAA25" },
+  { "name": "Git", "icon": "https://cdn.simpleicons.org/git/F05032" },
+  { "name": "Adobe Photoshop", "icon": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/photoshop/photoshop-original.svg" },
+  { "name": "Adobe Premiere Pro", "icon": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/premierepro/premierepro-original.svg" }
+]

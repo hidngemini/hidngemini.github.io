@@ -1,0 +1,3 @@
+Lang Locked
+Lang Locked is a Minecraft mod I put together to help me learn Korean! It uses local speech recognition to grade you on your Korean pronounciation.
+Java, FabricMC, Vosk
