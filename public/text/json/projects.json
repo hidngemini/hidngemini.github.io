@@ -1,5 +1,5 @@
 [
   { "file": "../projects/virtualdancer.txt", "url": "./subpages/dancer/dancer.html" },
-  { "file": "../projects/pinns.txt", "url": "./index.html" },
+  { "file": "../projects/pinns.txt", "url": "./subpages/research/research.html" },
   { "file": "../projects/langlocked.txt", "url": "./subpages/langlocked/langlocked.html" }
 ]
