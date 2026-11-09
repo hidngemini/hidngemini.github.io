@@ -384,6 +384,23 @@ footer {
   image-rendering: -webkit-optimize-contrast;
 }
 
+.picture {
+  width: 440px;
+  height: 330px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--card-bg);
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.poster {
+  width: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: #ffffff;
+  image-rendering: -webkit-optimize-contrast;
+}
+
 .back-footer {
   position: sticky;
   left: 0;
